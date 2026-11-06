@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find the Ball</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #29283a;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+
+.game {
+  width: 100%;
+  max-width: 900px;
+  padding: 25px;
+  text-align: center;
+}
+
+/* =========================
+   TÍTULO
+========================= */
+
+h1 {
+  font-size: clamp(28px, 6vw, 42px);
+  letter-spacing: 3px;
+  margin: 0 0 35px;
+  font-weight: 800;
+}
+
+.letter-1  { color: #FF6B6B; }
+.letter-2  { color: #FFD93D; }
+.letter-3  { color: #6BCB77; }
+.letter-4  { color: #4D96FF; }
+.letter-5  { color: #C77DFF; }
+.letter-6  { color: #FF8FAB; }
+.letter-7  { color: #4ECDC4; }
+.letter-8  { color: #FFD166; }
+.letter-9  { color: #06D6A0; }
+.letter-10 { color: #EF476F; }
+.letter-11 { color: #7B9EFF; }
+
+/* =========================
+   TABLERO DE PUNTUACIÓN
+========================= */
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 35px;
+}
+
+.stat {
+  flex: 1;
+  max-width: 160px;
+  padding: 18px 12px;
+  background: #ffffff;
+  border: 1px solid #e9e9ef;
+  border-radius: 32px;
+  box-shadow: 0 4px 15px #0000000a;
+  color: #777789;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  
+}
+
+.stat strong {
+  display: block;
+  color: #29283a;
+  font-size: 24px;
+  margin-top: 4px;
+}
+
+/* =========================
+   TABLERO DEL JUEGO
+========================= */
+
+.table {
+  height: 300px;
+  width: 100%;
+  max-width: 700px;
+  position: relative;
+  margin: auto;
+  background: #FFD93D;
+  border: 2px solid #ededf3;
+  border-radius: 25px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px #0000000a;
+}
+
+/* =========================
+   BOLITA
+========================= */
+
+.ball {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 25%,
+    #fff 0%,
+    #FF6B6B 35%,
+    #FF6B6B 100%
+  );
+  box-shadow: 0 0 18px #f7f4ed;
+  transform: translateX(-50%);
+  z-index: 1;
+  opacity: 1;
+  transition: left 0.5s ease;
+}
+
+.ball.revealed {
+  z-index: 6;
+}
+
+/* =========================
+   VASOS
+========================= */
+
+.cup {
+  position: absolute;
+  bottom: 55px;
+  width: 75px;
+  height: 125px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+  transform: translateX(-50%);
+  transition:
+    left 0.55s cubic-bezier(.2,.8,.3,1),
+    bottom 0.35s ease;
+}
+
+.cup-shape {
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  clip-path: polygon(5% 0, 95% 0, 78% 100%, 22% 100%);
+  filter: drop-shadow(0 8px 6px #0002);
+}
+
+/* TODOS LOS VASOS DEL MISMO COLOR */
+.cup-shape {
+  background: linear-gradient(90deg, #2563eb, #60a5fa 45%, #1d4ed8);
+}
+
+/* BORDE SUPERIOR */
+.cup::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 13px;
+  border-radius: 50%;
+}
+
+.cup::before {
+  background: #93c5fd;
+}
+
+/* LEVANTAR VASO */
+.cup.lifted {
+  bottom: 125px;
+}
+
+.cup:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.cup:disabled {
+  cursor: default;
+}
+
+/* =========================
+   MANO ANIMADA
+========================= */
+
+.hand {
+  position: absolute;
+  top: 8px;
+  left: 25%;
+  width: 65px;
+  height: 85px;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+
+  transform: translateX(-50%) translateY(-12px);
+
+  transition:
+    left 0.45s ease,
+    opacity 0.25s ease,
+    transform 0.25s ease;
+
+  filter: drop-shadow(0 4px 4px #0002);
+}
+
+.hand.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Movimiento de la mano al agarrar */
+.hand.press {
+  transform: translateX(-50%) translateY(38px) scale(.94);
+}
+
+/* Movimiento de dedos */
+.hand-fingers {
+  transform-origin: 32px 42px;
+  transition: transform 0.2s ease;
+}
+
+.hand.press .hand-fingers {
+  transform: rotate(-12deg) scaleY(.88);
+}
+
+/* =========================
+   MENSAJES
+========================= */
+
+.message {
+  min-height: 30px;
+  margin-top: 12px;
+  color: #7357e8;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* =========================
+   BOTÓN
+========================= */
+
+.controls {
+  margin-top: 0px;
+}
+
+button.action {
+  background: #7357e8;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 16px 38px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 0 5px 15px #7357e833;
+  transition: 0.2s ease;
+}
+
+button.action:hover {
+  background: #5c40d0;
+  transform: translateY(-2px);
+}
+
+button.action:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.instructions {
+  color: #9999a8;
+  font-size: 12px;
+  margin-top: 20px;
+  letter-spacing: 2px;
+}
+
+/* =========================
+   CONFETI
+========================= */
+
+/* Capa transparente que cubre toda la pantalla */
+.confetti-container {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Cada pedacito de confeti */
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  opacity: 0;
+  animation: confetti-fall var(--duration) linear var(--delay) forwards;
+}
+
+/* Caída: baja por toda la pantalla, gira y se desvía hacia un lado */
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, -30px, 0) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift), 105vh, 0) rotate(var(--spin));
+  }
+}
+
+/* Si la persona pidió menos movimiento en su sistema, no hay confeti */
+@media (prefers-reduced-motion: reduce) {
+  .confetti-container {
+    display: none;
+  }
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width: 500px) {
+
+  .game {
+    padding: 15px;
+  }
+
+  h1 {
+    margin-bottom: 25px;
+  }
+
+  .stats {
+    gap: 9px;
+    margin-bottom: 25px;
+  }
+
+  .stat {
+    padding: 15px 5px;
+    font-size: 10px;
+  }
+
+  .stat strong {
+    font-size: 25px;
+  }
+
+  .table {
+    height: 230px;
+    max-width: 100%;
+  }
+
+  .cup {
+    width: 75px;
+    height: 110px;
+  }
+
+  .hand {
+    width: 55px;
+    height: 75px;
+  }
+
+  button.action {
+    padding: 14px 25px;
+    width:100% ;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<main class="game">
+
+  <!-- TÍTULO -->
+  <h1>
+    <span class="letter-1">F</span><span class="letter-2">I</span><span class="letter-3">N</span><span class="letter-4">D</span>
+    <span class="letter-5">T</span><span class="letter-6">H</span><span class="letter-7">E</span>
+    <span class="letter-8">B</span><span class="letter-9">A</span><span class="letter-10">L</span><span class="letter-11">L</span>
+  </h1>
+
+  <!-- PUNTUACIÓN -->
+  <section class="stats">
+
+    <div class="stat">
+      SCORE
+      <strong id="score">0</strong>
+    </div>
+
+    <div class="stat">
+      LEVEL
+      <strong id="level">1</strong>
+    </div>
+
+    <div class="stat">
+      HIGH SCORE
+      <strong id="best">0</strong>
+    </div>
+
+  </section>
+
+  <!-- TABLERO -->
+  <div class="table" id="table">
+
+    <!-- BOLITA -->
+    <div class="ball" id="ball"></div>
+
+    <!-- MANO ANIMADA -->
+    <div class="hand" id="hand">
+
+      <svg viewBox="0 0 64 80"
+           width="100%"
+           height="100%"
+           xmlns="http://www.w3.org/2000/svg">
+
+        <!-- Muñeca y palma -->
+        <path
+          d="M17 79
+             L17 59
+             C14 55 10 49 6 42
+             C3 37 5 32 9 30
+             C13 28 17 31 20 36
+             L23 41
+             L23 14
+             C23 8 27 5 31 5
+             C36 5 39 9 39 14
+             L39 35
+             C41 31 46 30 50 33
+             C54 36 54 41 51 45
+             C57 43 61 48 60 53
+             C62 61 57 70 50 76
+             L47 79 Z"
+          fill="#F5C7A5"
+          stroke="#A87965"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+
+        <!-- Dedos -->
+        <g class="hand-fingers">
+          <path
+            d="M23 14
+               C23 8 27 5 31 5
+               C36 5 39 9 39 14
+               L39 37"
+            fill="none"
+            stroke="#A87965"
+            stroke-width="1.5"
+          />
+
+          <path
+            d="M39 35
+               C41 31 46 30 50 33"
+            fill="none"
+            stroke="#A87965"
+            stroke-width="1.5"
+          />
+        </g>
+
+        <!-- Detalle de muñeca -->
+        <path
+          d="M18 67 Q32 72 49 66"
+          fill="none"
+          stroke="#D99E83"
+          stroke-width="1.5"
+        />
+
+      </svg>
+
+    </div>
+
+    <!-- VASOS -->
+    <button class="cup" data-id="0" aria-label="Blue cup">
+      <span class="cup-shape"></span>
+    </button>
+
+    <button class="cup" data-id="1" aria-label="Purple cup">
+      <span class="cup-shape"></span>
+    </button>
+
+    <button class="cup" data-id="2" aria-label="Orange cup">
+      <span class="cup-shape"></span>
+    </button>
+
+  </div>
+
+  <!-- MENSAJE -->
+  <div class="message" id="message">
+    Find the ball under one of the cups.
+  </div>
+
+  <!-- BOTÓN -->
+  <div class="controls">
+    <button class="action" id="start">
+      START GAME
+    </button>
+  </div>
+
+  <!-- INSTRUCCIONES -->
+  <div class="instructions">
+    WATCH · MEMORIZE · GUESS
+  </div>
+
+</main>
+
+<script>
+
+/* =========================
+   ELEMENTOS
+========================= */
+
+const cups = [...document.querySelectorAll(".cup")];
+
+const ball = document.getElementById("ball");
+
+const hand = document.getElementById("hand");
+
+const message = document.getElementById("message");
+
+const startButton = document.getElementById("start");
+
+const scoreText = document.getElementById("score");
+
+const levelText = document.getElementById("level");
+
+const bestText = document.getElementById("best");
+
+/* =========================
+   VARIABLES
+========================= */
+
+let score = 0;
+let level = 1;
+let best = 0;
+
+let winningCup = 0;
+
+let gameActive = false;
+let playing = false;
+
+// Posiciones horizontales
+const positions = ["25%", "50%", "75%"];
+
+// Confeti: cantidad y colores (cámbialos aquí)
+const CONFETTI_COUNT = 90;
+const CONFETTI_COLORS = [
+  "#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF",
+  "#C77DFF", "#FF8FAB", "#4ECDC4", "#EF476F"
+];
+
+/* =========================
+   FUNCIONES AUXILIARES
+========================= */
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Número al azar entre un mínimo y un máximo
+function random(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+// Actualizar posiciones
+function updatePositions() {
+
+  cups.forEach(cup => {
+
+    const slot = Number(cup.dataset.slot);
+
+    cup.style.left = positions[slot];
+
+  });
+
+  ball.style.left = positions[winningCup];
+}
+
+// Mover mano a una posición
+function moveHand(position) {
+
+  hand.style.left = position;
+
+}
+
+// Mostrar mano
+function showHand() {
+
+  hand.classList.add("active");
+
+}
+
+// Ocultar mano
+function hideHand() {
+
+  hand.classList.remove("active", "press");
+
+}
+
+// Agarrar
+function pressHand() {
+
+  hand.classList.add("press");
+
+}
+
+// Soltar
+function releaseHand() {
+
+  hand.classList.remove("press");
+
+}
+
+/* =========================
+   CONFETI
+========================= */
+
+function launchConfetti() {
+
+  const container = document.createElement("div");
+  container.className = "confetti-container";
+
+  let longestTime = 0;
+
+  for (let i = 0; i < CONFETTI_COUNT; i++) {
+
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+
+    const duration = random(2.4, 4.2);   // segundos que tarda en caer
+    const delay = random(0, 0.9);        // cuándo empieza a caer
+
+    longestTime = Math.max(longestTime, duration + delay);
+
+    // Forma: rectángulo o círculo
+    const width = random(6, 12);
+    const height = Math.random() < 0.5 ? width : random(10, 18);
+
+    piece.style.left = random(0, 100) + "%";
+    piece.style.width = width + "px";
+    piece.style.height = height + "px";
+    piece.style.background =
+      CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+    piece.style.borderRadius = Math.random() < 0.35 ? "50%" : "2px";
+
+    // Variables que usa la animación CSS
+    piece.style.setProperty("--duration", duration + "s");
+    piece.style.setProperty("--delay", delay + "s");
+    piece.style.setProperty("--drift", random(-140, 140) + "px");
+    piece.style.setProperty("--spin", random(-900, 900) + "deg");
+
+    container.appendChild(piece);
+  }
+
+  document.body.appendChild(container);
+
+  // Cuando termina la caída, borramos la capa
+  setTimeout(() => {
+    container.remove();
+  }, (longestTime + 0.3) * 1000);
+
+}
+
+/* =========================
+   INICIAR PARTIDA
+========================= */
+
+async function startGame() {
+
+  if (playing) return;
+
+  playing = true;
+  gameActive = false;
+
+  startButton.disabled = true;
+  startButton.textContent = "WATCH...";
+
+  hideHand();
+
+  // Restaurar vasos
+  cups.forEach((cup, index) => {
+
+    cup.dataset.slot = index;
+
+    cup.disabled = true;
+
+    cup.classList.remove("lifted");
+
+  });
+
+  // Elegir posición aleatoria de la bolita
+  winningCup = Math.floor(Math.random() * 3);
+
+  updatePositions();
+
+  // Mostrar bolita durante la observación inicial.
+  ball.classList.remove("revealed");
+  ball.style.opacity = "1";
+
+  // Durante la demostración las manos permanecen ocultas.
+  hideHand();
+  message.textContent = "Watch where the ball is!";
+
+  await wait(1200);
+
+  // Preparar mezcla
+  message.textContent = "The cups are shuffling!";
+
+  ball.style.opacity = "0";
+
+  await wait(350);
+
+  // Comenzar mezcla
+  await shuffle();
+
+}
+
+/* =========================
+   MEZCLAR VASOS
+========================= */
+
+async function shuffle() {
+
+  const totalMoves = 5 + level * 2;
+
+  for (let i = 0; i < totalMoves; i++) {
+
+    const a = Math.floor(Math.random() * 3);
+
+    let b = Math.floor(Math.random() * 3);
+
+    while (b === a) {
+      b = Math.floor(Math.random() * 3);
+    }
+
+    const slotA = Number(cups[a].dataset.slot);
+
+    const slotB = Number(cups[b].dataset.slot);
+
+    await wait(220);
+
+    // Intercambiar posiciones
+    cups[a].dataset.slot = slotB;
+
+    cups[b].dataset.slot = slotA;
+
+    // Actualizar posición de la bolita
+    if (winningCup === slotA) {
+
+      winningCup = slotB;
+
+    } else if (winningCup === slotB) {
+
+      winningCup = slotA;
+
+    }
+
+    updatePositions();
+
+    await wait(500);
+
+  }
+
+  // Ocultar mano al terminar
+  hideHand();
+
+  await wait(250);
+
+  // Habilitar selección
+  gameActive = true;
+
+  cups.forEach(cup => {
+    cup.disabled = false;
+  });
+
+  message.textContent = "Where is the ball?";
+
+  startButton.disabled = false;
+
+  startButton.textContent = "PLAY AGAIN";
+  startButton.hidden = false;
+
+  playing = false;
+
+}
+
+/* =========================
+   SELECCIONAR VASO
+========================= */
+
+async function selectCup(event) {
+
+  if (!gameActive) return;
+
+  gameActive = false;
+
+  const selectedCup = event.currentTarget;
+  const selectedSlot = Number(selectedCup.dataset.slot);
+
+  // Bloquear los vasos mientras se realiza la animación.
+  cups.forEach(cup => {
+    cup.disabled = true;
+  });
+
+  // Las manos aparecen únicamente sobre el vaso elegido por el jugador.
+  moveHand(positions[selectedSlot]);
+  showHand();
+  message.textContent = "Lifting your chosen cup...";
+
+  await wait(300);
+  pressHand();
+
+  await wait(250);
+
+  // Se levanta solamente el vaso seleccionado.
+  selectedCup.classList.add("lifted");
+
+  await wait(600);
+  releaseHand();
+
+  // Mostrar la bolita en su posición real.
+  ball.classList.add("revealed");
+  ball.style.opacity = "1";
+
+  await wait(350);
+  hideHand();
+
+  if (selectedSlot === winningCup) {
+    score++;
+    level = Math.floor(score / 3) + 1;
+    message.textContent = "CORRECT! YOU FOUND THE BALL!";
+    best = Math.max(best, score);
+    launchConfetti();   // ¡confeti al acertar!
+  } else {
+    score = 0;
+    level = 1;
+    message.textContent = "OOPS! THE BALL WAS UNDER ANOTHER CUP.";
+  }
+
+  scoreText.textContent = score;
+  levelText.textContent = level;
+  bestText.textContent = best;
+
+  startButton.textContent = "PLAY AGAIN";
+  startButton.hidden = false;
+  startButton.disabled = false;
+
+}
+
+/* =========================
+   EVENTOS
+========================= */
+
+cups.forEach(cup => {
+
+  cup.addEventListener("click", selectCup);
+
+});
+
+startButton.addEventListener("click", startGame);
+
+// Doses starts the round when the viewer enters; legacy browsers use the button.
+if (window.Doses && typeof Doses.onStart === "function") {
+  startButton.hidden = true;
+  Doses.onStart(() => {
+    startButton.hidden = true;
+    startGame();
+  });
+}
+
+/* =========================
+   INICIALIZACIÓN
+========================= */
+
+cups.forEach((cup, index) => {
+
+  cup.dataset.slot = index;
+
+});
+
+updatePositions();
+
+</script>
+
+</body>
+</html>
